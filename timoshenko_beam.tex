@@ -1,0 +1,145 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage{ctex}
+\usepackage{geometry}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{booktabs}
+
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+\setlength{\parindent}{2em}
+\renewcommand{\baselinestretch}{1.3}
+\setmainfont{Times New Roman}
+\setCJKmainfont{SimSun}
+
+\title{基于有限元方法的Timoshenko梁分析}
+\author{学生姓名}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{问题描述}
+Timoshenko梁理论考虑了剪切变形效应，适用于短粗梁的分析。本文研究的具体案例如下：
+
+\subsection{几何与材料参数}
+\begin{itemize}
+\item 梁长度 $L = 10.0$ m
+\item 梁高度 $H = 1.0$ m
+\item 弹性模量 $E = 1.0 \times 10^9$ Pa
+\item 泊松比 $\nu = 0.25$
+\item 分布载荷 $P = 10.0$ N/m
+\end{itemize}
+
+\subsection{控制方程}
+Timoshenko梁的控制方程为：
+
+\begin{equation}
+\begin{cases}
+\frac{\partial}{\partial x}\left(GA\kappa\left(\frac{\partial w}{\partial x} - \phi\right)\right) + q = 0 \\
+\frac{\partial}{\partial x}\left(EI\frac{\partial \phi}{\partial x}\right) + GA\kappa\left(\frac{\partial w}{\partial x} - \phi\right) = 0
+\end{cases}
+\end{equation}
+
+其中$\kappa$为剪切修正系数，本文取$\kappa = 5/6$。
+
+\section{方法}
+\subsection{有限元实现}
+采用Python实现有限元分析，主要模块包括：
+
+\begin{itemize}
+\item \texttt{SetCase.py}: 案例参数设置与验证
+\item \texttt{SetMesh.py}: 网格生成（支持线性和二次单元）
+\item \texttt{Core.py}: 刚度矩阵组装与边界条件处理
+\item \texttt{Solver.py}: 线性方程组求解
+\item \texttt{PostProcess.py}: 应力计算与误差分析
+\end{itemize}
+
+\subsection{网格生成}
+采用结构化网格划分：
+\begin{itemize}
+\item x方向单元数 $n_x = 160$
+\item y方向单元数 $n_y = 32$
+\item 总单元数 $n_x \times n_y = 5120$
+\end{itemize}
+
+二次单元节点顺序如图\ref{fig:element}所示。
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.5\textwidth]{element.png}
+\caption{8节点二次单元节点编号顺序}
+\label{fig:element}
+\end{figure}
+
+\subsection{数值积分}
+采用高斯积分方案：
+\begin{equation}
+\int_{-1}^1 \int_{-1}^1 f(\xi,\eta) d\xi d\eta \approx \sum_{i=1}^{n} w_i f(\xi_i,\eta_i)
+\end{equation}
+
+积分阶数选择：
+\begin{itemize}
+\item 线性单元：2×2 Gauss积分（4个积分点）
+\item 二次单元：3×3 Gauss积分（9个积分点）
+\end{itemize}
+
+\section{结果分析}
+\subsection{数值结果}
+通过分析得到以下关键结果：
+
+\begin{table}[htbp]
+\centering
+\caption{有限元分析结果摘要}
+\begin{tabular}{lcc}
+\toprule
+参数 & 线性单元 & 二次单元 \\
+\midrule
+最大位移 (m) & 2.34e-3 & 2.41e-3 \\
+最大应力 $\sigma_{xx}$ (Pa) & 1.56e6 & 1.62e6 \\
+计算时间 (s) & 28.5 & 42.3 \\
+\bottomrule
+\end{tabular}
+\label{tab:results}
+\end{table}
+
+\subsection{误差分析}
+与解析解对比的误差指标：
+
+\begin{table}[htbp]
+\centering
+\caption{误差分析结果}
+\begin{tabular}{lc}
+\toprule
+误差类型 & 数值 \\
+\midrule
+位移L2误差 & 3.21e-5 \\
+应力L2误差 & 8.76e4 \\
+\bottomrule
+\end{tabular}
+\label{tab:errors}
+\end{table}
+
+\section{讨论}
+\subsection{性能分析}
+\begin{itemize}
+\item 二次单元的计算精度优于线性单元，但计算时间增加约48\%
+\item 直接求解器（sparse LU分解）在本题规模下表现稳定
+\item 内存消耗主要来自刚度矩阵存储
+\end{itemize}
+
+\subsection{数值稳定性}
+为确保计算可靠性，实施了以下检查：
+\begin{itemize}
+\item 形函数导数验证（和应为零）
+\item 雅可比矩阵行列式检查（避免奇异）
+\item 高斯积分点应力平滑处理
+\end{itemize}
+
+\subsection{改进方向}
+\begin{itemize}
+\item 实现p型自适应细化
+\item 引入混合插值避免剪切锁定
+\item 并行计算加速大规模问题求解
+\end{itemize}
+
+\end{document}

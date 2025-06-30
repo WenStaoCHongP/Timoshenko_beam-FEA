@@ -1,0 +1,114 @@
+%------------------------------------------------------------
+% Example 6.3.2   
+% Dynamic resposne analysis of the plate for plane stress 
+% analysis.
+%
+% Variable descriptions
+%   dk = element stiffness matrix
+%   dm = element mass matrix
+%    k = system stiffness matrix 
+%    m = system mass matrix 
+%    gcoord = coordinate values of each node
+%    nodes = nodal connectivity of each element
+%гнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгнгн
+% Input data for control paramters
+%-----------------------------------------------------------
+Element_number=100;       % number of elements
+No_nel=4;                 % number of nodes per element
+No_dof=2;                 % number of dofs per node
+Node_number=121;          % total number of nodes in system
+Prop(1)=2.1e11;           % elastic modulus
+Prop(2)=0.3;              % Poisson's ratio
+Prop(3)=7860;             % Mass density
+t=0.003;                  % Thickness
+%----------------------------------------------------------
+% Input data for nodal coordinate values
+% gcoord(i,j) where i-> node no. and j-> x or y
+%----------------------------------------------------------
+
+for loopi=1:Node_number
+    if rem(loopi,11)~=0
+        gcoord(loopi,1)=(loopi-floor(loopi/11)*11-1)*0.02;
+        gcoord(loopi,2)=floor(loopi/11)*0.02;
+    else
+        gcoord(loopi,1)=0.2;
+        gcoord(loopi,2)=(floor(loopi/11)-1)*0.02;
+    end
+end
+%----------------------------------------------------------
+% Input data for nodal connectivity for each element 
+% nodes(i,j) where i-> element no. and j-> connected nodes
+%--------------------------------------------------------
+No_element=0;
+for loopi=1:10
+    for loopj=1:10
+          No_element=No_element+1;
+          nodes(No_element,1)=(loopi-1)*11+loopj;
+          nodes(No_element,2)=(loopi-1)*11+loopj+1;
+          nodes(No_element,3)=(loopi-1)*11+loopj+12;
+          nodes(No_element,4)=(loopi-1)*11+loopj+11; 
+    end
+end 
+%------------------------------------------------------
+% Inout data for boundary conditions
+%------------------------------------------------------
+ed(1:Node_number,1:2)=1;            %elment_displacement 
+constraint=[1,1;1,2;11,2];
+ 
+for loopi=1:length(constraint);
+    ed(constraint(loopi,1),constraint(loopi,2))=0;
+end
+dof=0;
+for loopi=1:Node_number
+     for loopj=1:2
+        if ed(loopi,loopj)~=0
+            dof=dof+1;
+            ed(loopi,loopj)=dof;
+        end
+    end
+end
+%--------------------------------------------------------
+%Initilization of matrices 
+%--------------------------------------------------------
+k=zeros(dof,dof);          % system stiffness matrix
+m=zeros(dof,dof);          % system mass matrix
+e2s(1:8)=0;    % index of transform the elment displament number to structural
+%--------------------------------------------------------
+% Compute system stiffness and mass matrices
+%-------------------------------------------------------
+ for loopi=1:Element_number            %  loop for the total number of elements
+     for zi=1:4
+        e2s((zi-1)*2+1)=ed(nodes(loopi,zi),1);
+        e2s((zi-1)*2+2)=ed(nodes(loopi,zi),2);
+     end
+   for loopj=1:4
+       xycoord(loopj,1)=gcoord(nodes(loopi,loopj),1);
+       xycoord(loopj,2)=gcoord(nodes(loopi,loopj),2);
+   end
+  iopt=1;                               % plane stress analysis
+ % iopt=2;                              % plane strain analysis
+  Opt_mass=1;                           % Consistent mass matrix
+  [dk,dm]=BilinearElement1(Prop, No_nel,No_dof,xycoord,t,iopt,Opt_mass);
+    for jx=1:8
+        for jy=1:8
+            if(e2s(jx)*e2s(jy)~=0)
+                k(e2s(jx),e2s(jy))=k(e2s(jx),e2s(jy))+dk(jx,jy);
+                m(e2s(jx),e2s(jy))=m(e2s(jx),e2s(jy))+dm(jx,jy);
+            end
+        end
+    end
+ end
+%------------------------------------------------------
+% Dynamic response analysis
+%-----------------------------------------------------
+A=[zeros(dof) eye(dof);-inv(m)*k zeros(dof)];  % state-space form
+B=zeros(2*dof,1);
+B(10)=-2000;
+C=eye(2*dof);
+D=0;
+G=ss(A,B,C,D);
+[y,t,x]=step(G);
+plot(t,x(:,10))
+%-----------------------------------------------------
+% The end
+%------------------------------------------------------
